@@ -101,3 +101,26 @@ def has_content_changed(stored_hash: str | None, new_raw_content: str) -> bool:
     if stored_hash is None:
         return True
     return compute_hash(new_raw_content) != stored_hash
+def ensure_wiki_structure() -> None:
+    """Create the wiki skeleton if missing so a fresh/empty volume self-bootstraps.
+    Idempotent: does nothing if files already exist. Deterministic, no LLM."""
+    from pathlib import Path as _Path
+    PROJECTS_DIR = WIKI_ROOT / "projects"
+    WIKI_ROOT.mkdir(parents=True, exist_ok=True)
+    PEOPLE_DIR.mkdir(parents=True, exist_ok=True)
+    PROJECTS_DIR.mkdir(parents=True, exist_ok=True)
+    index_path = WIKI_ROOT / "index.md"
+    if not index_path.exists():
+        skeleton = (
+            "# Wiki Index\n\n"
+            "## People\n"
+            "| Person | File | Last Updated |\n"
+            "|---|---|---|\n\n"
+            "## Projects\n"
+            "| Project | File | Status |\n"
+            "|---|---|---|\n\n"
+            "## Topics -> Source\n"
+            "| Topic | File |\n"
+            "|---|---|\n"
+        )
+        _atomic_write(index_path, skeleton)

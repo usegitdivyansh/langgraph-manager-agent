@@ -56,6 +56,8 @@ def run_followup_and_post():
     print(report)
 def run_listener():
     print("Starting intern-wiki-agent (Writing + Querying)...")
+    from src.tools.local_wiki import ensure_wiki_structure
+    ensure_wiki_structure()
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
 if __name__ == "__main__":
