@@ -58,8 +58,23 @@ def run_listener():
     print("Starting intern-wiki-agent (Writing + Querying)...")
     from src.tools.local_wiki import ensure_wiki_structure
     ensure_wiki_structure()
+    _start_followup_scheduler()
     handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
     handler.start()
+def _start_followup_scheduler():
+    """Background daily follow-up at 11:00 AM IST. Uses existing run_followup_and_post().
+    Does not touch agent logic -- only schedules an existing function."""
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        from zoneinfo import ZoneInfo
+        tz = ZoneInfo("Asia/Kolkata")
+        scheduler = BackgroundScheduler(timezone=tz)
+        scheduler.add_job(run_followup_and_post, CronTrigger(hour=11, minute=0, timezone=tz))
+        scheduler.start()
+        print("Follow-up scheduler started (daily 11:00 AM IST).")
+    except Exception as e:
+        print(f"[SCHEDULER WARNING] could not start follow-up scheduler: {e}")
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["listen", "followup"], default="listen")
