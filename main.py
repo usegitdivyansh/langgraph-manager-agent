@@ -74,7 +74,7 @@ def _start_followup_scheduler():
         from zoneinfo import ZoneInfo
         tz = ZoneInfo("Asia/Kolkata")
         scheduler = BackgroundScheduler(timezone=tz)
-        scheduler.add_job(run_followup_and_post, CronTrigger(hour=11, minute=0, timezone=tz))
+        scheduler.add_job(run_followup_and_post, CronTrigger(hour=6, minute=34, timezone=tz))
         scheduler.start()
         print("Follow-up scheduler started (daily 11:00 AM IST).")
     except Exception as e:
