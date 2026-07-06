@@ -81,3 +81,55 @@ def format_report(categorized: dict) -> str:
         for r in upcoming:
             lines.append(f"  - [{r['id']}] {r['person']}: {r['task']} (due {r['due']})")
     return "\n".join(lines)
+def _row_to_line(r: dict) -> str:
+    """Rebuild a table row line from a parsed row dict (same 7-column format)."""
+    return f"| {r['id']} | {r['person']} | {r['task']} | {r['assigned']} | {r['due']} | {r['source']} | {r['status']} |"
+def purge_expired_followups(today: date | None = None) -> int:
+    """Delete follow-up rows whose due date is strictly BEFORE today (1-day grace:
+    an item due on the 7th survives the 7th, is removed on the 8th's run).
+    Rows with today's date, future dates, or unparseable dates are kept.
+    Header is preserved. Atomic write. Returns count of rows removed.
+    Intended to run on the cron pass only -- never on live queries."""
+    import os
+    import uuid
+    if today is None:
+        today = date.today()
+    if not FOLLOWUP_LIST_PATH.exists():
+        return 0
+    content = FOLLOWUP_LIST_PATH.read_text(encoding="utf-8")
+    lines = content.splitlines()
+    kept_lines = []
+    removed = 0
+    for line in lines:
+        # Keep any non-data line (header, separator, blank) untouched
+        if not line.startswith("|"):
+            kept_lines.append(line)
+            continue
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        if len(cells) != 7 or cells[0] in ("ID", "---"):
+            kept_lines.append(line)  # header/separator row -> keep
+            continue
+        # Data row: decide by due date
+        try:
+            due_date = datetime.strptime(cells[4], "%Y-%m-%d").date()
+        except ValueError:
+            kept_lines.append(line)  # unparseable date -> keep (safe)
+            continue
+        if due_date < today:
+            removed += 1  # strictly before today -> drop
+        else:
+            kept_lines.append(line)  # today or future -> keep
+    if removed == 0:
+        return 0
+    new_content = "\n".join(kept_lines)
+    if not new_content.endswith("\n"):
+        new_content += "\n"
+    temp_path = FOLLOWUP_LIST_PATH.parent / f".follow-up-list.{uuid.uuid4().hex}.tmp"
+    try:
+        temp_path.write_text(new_content, encoding="utf-8")
+        os.replace(temp_path, FOLLOWUP_LIST_PATH)
+    except Exception:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
+    return removed

@@ -47,8 +47,12 @@ def handle_message(event, logger, say):
             thread_ts=thread_ts,
         )
 def run_followup_and_post():
-    """Runs the detect-only follow-up check and posts the report to Slack directly
-    (not via Socket Mode listener -- this is a one-shot post, meant for cron)."""
+    """Runs the follow-up cron pass: purge expired items (due before today, 1-day
+    grace), then post the report to Slack. One-shot, meant for cron."""
+    from src.tools.followup_detect import purge_expired_followups
+    removed = purge_expired_followups()
+    if removed:
+        print(f"Purged {removed} expired follow-up(s).")
     report = run_followup_check()
     channel = os.environ.get("SLACK_HOME_CHANNEL")
     app.client.chat_postMessage(channel=channel, text=f":clipboard: *Follow-up Check*\n{report}")
