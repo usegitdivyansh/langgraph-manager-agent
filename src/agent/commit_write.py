@@ -39,26 +39,48 @@ def _next_followup_id() -> str:
     existing_ids = re.findall(r"FU-(\d+)", content)
     next_num = max([int(i) for i in existing_ids], default=0) + 1
     return f"FU-{next_num:03d}"
-def _detect_and_log_followup(person_name: str, update_content: str, source_file: str):
-    client = get_llm_client()
-    today = str(date.today())
-    raw = safe_completion(
-        client,
-        model="deepseek/deepseek-v4-flash",
-        messages=[{"role": "user", "content": FOLLOWUP_CHECK_PROMPT.format(update=update_content, today=today)}],
-        max_tokens=200,
-        temperature=0,
-    )
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
+JSON_PARSE_ATTEMPTS = 3
+def _ask_followup_llm(update_content: str, today: str) -> dict | None:
+    """Call the LLM and parse its JSON. Retries on malformed/truncated JSON --
+    the model occasionally cuts a response short mid-object. Returns the parsed
+    dict, or None if every attempt failed. Never raises."""
     import json
-    try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        return []
+    client = get_llm_client()
+    for attempt in range(1, JSON_PARSE_ATTEMPTS + 1):
+        raw = safe_completion(
+            client,
+            model="deepseek/deepseek-v4-flash",
+            messages=[{"role": "user", "content": FOLLOWUP_CHECK_PROMPT.format(update=update_content, today=today)}],
+            max_tokens=300,
+            temperature=0,
+        )
+        clean = raw
+        if clean.startswith("```"):
+            clean = clean.split("```")[1]
+            if clean.startswith("json"):
+                clean = clean[4:]
+        clean = clean.strip()
+        try:
+            parsed = json.loads(clean)
+        except json.JSONDecodeError:
+            print(f"[FOLLOWUP LLM] attempt {attempt}/{JSON_PARSE_ATTEMPTS}: malformed JSON: {raw!r}")
+            continue
+        if not isinstance(parsed, dict):
+            print(f"[FOLLOWUP LLM] attempt {attempt}/{JSON_PARSE_ATTEMPTS}: not a JSON object: {parsed!r}")
+            continue
+        if "has_commitment" not in parsed or "is_completion" not in parsed:
+            print(f"[FOLLOWUP LLM] attempt {attempt}/{JSON_PARSE_ATTEMPTS}: missing keys: {parsed!r}")
+            continue
+        return parsed
+    print(f"[FOLLOWUP LLM] all {JSON_PARSE_ATTEMPTS} attempts failed for: {update_content[:80]!r}")
+    return None
+def _detect_and_log_followup(person_name: str, update_content: str, source_file: str):
+    today = str(date.today())
+    parsed = _ask_followup_llm(update_content, today)
+    if parsed is None:
+        return ["(Could not check follow-ups for this message -- the language model "
+                "did not respond properly. If you were reporting a completed task, "
+                "please say so again.)"]
     notes = []
     # --- COMPLETION (handled first: closing an old row is independent of
     # opening a new one, and a message can do both) ---
