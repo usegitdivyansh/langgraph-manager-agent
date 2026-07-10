@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import argparse
 from dotenv import load_dotenv
@@ -31,7 +31,9 @@ def handle_message(event, logger, say):
                 "channel": channel,
                 "thread_ts": thread_ts,
             })
-            print(f"[WRITE RESULT] {result.get('final_response')}")
+            write_response = result.get("final_response", "Wiki updated.")
+            print(f"[WRITE RESULT] {write_response}")
+            say(text=write_response, thread_ts=thread_ts)
         else:
             result = querying_agent.invoke({
                 "raw_text": text,

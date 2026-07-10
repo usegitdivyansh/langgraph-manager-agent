@@ -1,4 +1,4 @@
-﻿"""
+"""
 followup_detect -- Follow-up skill's detect-only logic.
 Reads follow-up-list.md, categorizes each open item by due date, produces a report.
 Read-only: never modifies follow-up-list.md or contacts anyone. Per Anurag's spec,

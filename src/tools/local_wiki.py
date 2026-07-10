@@ -1,4 +1,4 @@
-﻿"""
+"""
 local_wiki -- local-filesystem storage for the Writing skill.
 Atomic writes, sha256 hash-gating, fuzzy name resolution, and deterministic
 wikilink insertion (LLM output is unreliable for links, so Python guarantees them).

@@ -1,4 +1,4 @@
-﻿"""
+"""
 followup_agent -- entry point for the Follow-up skill.
 Detect-only: reads follow-up-list.md, reports overdue/due-today/upcoming items,
 and posts the report to Slack. Intended to run on a schedule (Task Scheduler /

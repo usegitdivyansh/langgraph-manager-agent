@@ -1,4 +1,4 @@
-﻿"""
+"""
 merge_write -- Writing skill's core LLM node.
 Frontmatter handled in Python. Output normalized to strip typographic Unicode.
 Wikilinks are applied DETERMINISTICALLY in Python after the LLM step -- LLM

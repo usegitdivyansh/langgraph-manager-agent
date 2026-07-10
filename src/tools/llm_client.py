@@ -1,4 +1,4 @@
-﻿"""
+"""
 llm_client -- shared OpenAI/OpenRouter client with retry-on-empty-response.
 Testing showed this is genuinely random, intermittent provider-side flakiness --
 NOT correlated with call position, prompt length, or sequence timing (tested

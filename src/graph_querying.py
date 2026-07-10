@@ -1,4 +1,4 @@
-﻿"""
+"""
 graph_querying -- assembles the Querying skill as a compiled LangGraph.
 classify -> search (dispatches by question_type) -> format_answer.
 """

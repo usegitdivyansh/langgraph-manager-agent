@@ -1,4 +1,4 @@
-﻿"""
+"""
 reflect_write -- self-check node for Writing skill.
 Critically reviews a merge draft. The ONLY failure is content that appears in
 neither ORIGINAL nor UPDATE (i.e. genuinely fabricated). New content that came

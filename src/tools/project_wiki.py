@@ -1,4 +1,4 @@
-﻿"""
+"""
 project_wiki -- local-filesystem storage for project pages.
 Mirrors local_wiki.py's people logic: fuzzy resolution, atomic writes, and a
 DETERMINISTIC roster (## People section) so collaboration queries are reliable.

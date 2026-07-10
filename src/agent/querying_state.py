@@ -1,4 +1,4 @@
-﻿"""
+"""
 QueryingState: the typed dictionary that flows through the Querying skill's graph.
 Querying only ever reads -- no write-related fields here.
 """

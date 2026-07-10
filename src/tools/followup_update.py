@@ -1,4 +1,4 @@
-﻿"""
+"""
 followup_update -- deterministic close/reopen of follow-up rows.
 NO LLM here. Row selection and file writing are pure Python.
 Reuses the canonical parser/serializer from followup_detect so the table

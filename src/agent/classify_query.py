@@ -1,4 +1,4 @@
-﻿"""
+"""
 classify_query -- Querying skill's classification step.
 Extracts who/what/when the question is about, and which category it falls into.
 """

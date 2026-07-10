@@ -1,4 +1,4 @@
-﻿"""
+"""
 classify_write -- Writing skill's only LLM classification step.
 Assumes every input is an update (no intent detection needed --
 Writing skill never receives queries, only Slack updates/minutes/transcripts).

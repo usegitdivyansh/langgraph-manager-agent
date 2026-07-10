@@ -1,4 +1,4 @@
-﻿"""
+"""
 commit_write -- Writing skill's final node.
 Writes the merged draft to the person's wiki file, syncs index.md, detects
 follow-up commitments, and adds the person to any explicitly-mentioned project's

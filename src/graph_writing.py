@@ -1,4 +1,4 @@
-﻿"""
+"""
 graph_writing -- assembles the Writing skill as a compiled LangGraph.
 classify -> resolve_person -> read_person_file -> merge -> reflect -> [retry merge | commit].
 Guards against unidentifiable person_name and validates every merge via reflect.

@@ -1,4 +1,4 @@
-﻿"""
+"""
 intent_router -- decides whether an incoming Slack message is a write (an update)
 or a query (a question). This is a thin dispatcher, not part of either skill --
 Writing and Querying remain fully independent and don't know this exists.
