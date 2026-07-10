@@ -124,3 +124,37 @@ def ensure_wiki_structure() -> None:
             "|---|---|\n"
         )
         _atomic_write(index_path, skeleton)
+def rebuild_index_from_disk() -> None:
+    """Deterministically regenerate index.md from the files actually on disk.
+    Scans people/ and projects/, reads frontmatter (Python-written, reliable),
+    rebuilds both tables. No LLM. Replaces incremental sync to prevent drift."""
+    import re as _re
+    PROJECTS_DIR = WIKI_ROOT / "projects"
+    index_path = WIKI_ROOT / "index.md"
+    def _fm(content: str, field: str) -> str:
+        m = _re.search(rf"^{field}:\s*(.+)$", content, _re.MULTILINE)
+        return m.group(1).strip() if m else ""
+    # People table
+    people_rows = []
+    if PEOPLE_DIR.exists():
+        for p in sorted(PEOPLE_DIR.glob("*.md")):
+            c = p.read_text(encoding="utf-8")
+            title = _fm(c, "title") or p.stem.capitalize()
+            updated = _fm(c, "updated") or ""
+            people_rows.append(f"| {title} | people/{p.name} | {updated} |")
+    # Projects table
+    project_rows = []
+    if PROJECTS_DIR.exists():
+        for p in sorted(PROJECTS_DIR.glob("*.md")):
+            c = p.read_text(encoding="utf-8")
+            title = _fm(c, "title") or p.stem
+            status = _fm(c, "status") or "active"
+            project_rows.append(f"| {title} | projects/{p.name} | {status} |")
+    parts = ["# Wiki Index", "", "## People",
+             "| Person | File | Last Updated |", "|---|---|---|"]
+    parts += people_rows
+    parts += ["", "## Projects",
+              "| Project | File | Status |", "|---|---|---|"]
+    parts += project_rows
+    parts.append("")
+    _atomic_write(index_path, "\n".join(parts) + "\n")

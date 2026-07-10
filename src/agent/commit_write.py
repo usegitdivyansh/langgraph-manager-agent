@@ -11,17 +11,23 @@ from src.agent.writing_state import WritingState
 from src.tools.local_wiki import write_person_file, create_person_file, WIKI_ROOT
 from src.tools.llm_client import get_llm_client, safe_completion
 from src.tools.project_wiki import detect_mentioned_projects, add_person_to_project
+from src.tools.followup_update import get_open_rows_for_person, close_single_open_followup
 FOLLOWUP_LIST_PATH = WIKI_ROOT / "follow-up-list.md"
 INDEX_PATH = WIKI_ROOT / "index.md"
-FOLLOWUP_CHECK_PROMPT = """Does this update contain a future commitment or promise
-(something the person said they WILL do, with or without a deadline)?
+FOLLOWUP_CHECK_PROMPT = """Analyse this update for TWO independent things.
+1. COMMITMENT: does the person say they WILL do something in the future
+   (with or without a deadline)?
+2. COMPLETION: does the person claim they have FINISHED / COMPLETED / DONE
+   a task that was previously assigned to them?
+These are independent. A message can be one, the other, both, or neither.
+"I finished the report" -> completion, no commitment.
+"I will finish the report by Friday" -> commitment, no completion.
+"Done with the report, will start the deck tomorrow" -> both.
+"Still working on it" -> neither.
 UPDATE: {update}
-Respond ONLY with valid JSON, no explanation:
-If there IS a commitment:
-{{"has_commitment": true, "task": "<short description>", "due_date": "<YYYY-MM-DD, your best estimate, default to 3 days from today if unclear>"}}
-If there is NO commitment (just a status report of completed/ongoing work):
-{{"has_commitment": false, "task": null, "due_date": null}}
-TODAY'S DATE: {today}"""
+TODAY'S DATE: {today}
+Respond ONLY with valid JSON, no explanation, exactly these four keys:
+{{"has_commitment": <true|false>, "task": <"short description" or null>, "due_date": <"YYYY-MM-DD, your best estimate, default to 3 days from today if unclear" or null>, "is_completion": <true|false>}}"""
 def _ensure_followup_list_exists():
     if not FOLLOWUP_LIST_PATH.exists():
         FOLLOWUP_LIST_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -52,15 +58,33 @@ def _detect_and_log_followup(person_name: str, update_content: str, source_file:
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError:
-        return
-    if not parsed.get("has_commitment"):
-        return
-    fu_id = _next_followup_id()
-    task = parsed.get("task", "unspecified")
-    due = parsed.get("due_date", today)
-    row = f"| {fu_id} | {person_name} | {task} | {today} | {due} | {source_file} | open |\n"
-    with open(FOLLOWUP_LIST_PATH, "a", encoding="utf-8") as f:
-        f.write(row)
+        return []
+    notes = []
+    # --- COMPLETION (handled first: closing an old row is independent of
+    # opening a new one, and a message can do both) ---
+    if parsed.get("is_completion"):
+        open_rows = get_open_rows_for_person(person_name)
+        if len(open_rows) == 1:
+            closed_id = close_single_open_followup(person_name)
+            if closed_id:
+                notes.append(f"Marked {closed_id} as done.")
+        elif len(open_rows) > 1:
+            listed = ", ".join(r["id"] for r in open_rows)
+            notes.append(
+                f"{person_name} has {len(open_rows)} open follow-ups ({listed}). "
+                f"Which one is complete? Reply with the ID."
+            )
+        # zero open rows -> nothing to close, stay silent
+    # --- COMMITMENT (unchanged behaviour: append a new open row) ---
+    if parsed.get("has_commitment"):
+        fu_id = _next_followup_id()
+        task = parsed.get("task", "unspecified")
+        due = parsed.get("due_date", today)
+        row = f"| {fu_id} | {person_name} | {task} | {today} | {due} | {source_file} | open |\n"
+        with open(FOLLOWUP_LIST_PATH, "a", encoding="utf-8") as f:
+            f.write(row)
+        notes.append(f"Logged {fu_id} (due {due}).")
+    return notes
 def _sync_index_people_table(person_name: str, rel_path: str):
     if not INDEX_PATH.exists():
         return
@@ -112,9 +136,12 @@ def commit_write(state: WritingState) -> dict:
         for project_title in detect_mentioned_projects(update_content):
             add_person_to_project(project_title, person_name)
             linked_projects.append(project_title)
+    followup_notes = []
     if update_content:
-        _detect_and_log_followup(person_name, update_content, rel_path)
+        followup_notes = _detect_and_log_followup(person_name, update_content, rel_path) or []
     response = f"Wiki updated for {person_name}."
     if linked_projects:
         response += f" (linked to project: {', '.join(linked_projects)})"
+    for note in followup_notes:
+        response += f"\n{note}"
     return {"final_response": response}

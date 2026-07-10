@@ -109,7 +109,11 @@ def purge_expired_followups(today: date | None = None) -> int:
         if len(cells) != 7 or cells[0] in ("ID", "---"):
             kept_lines.append(line)  # header/separator row -> keep
             continue
-        # Data row: decide by due date
+        # Data row: completed items are dropped regardless of due date
+        if cells[6].lower() == "done":
+            removed += 1
+            continue
+        # Otherwise decide by due date
         try:
             due_date = datetime.strptime(cells[4], "%Y-%m-%d").date()
         except ValueError:
