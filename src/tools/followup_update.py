@@ -21,6 +21,18 @@ def get_open_rows_for_person(person_name: str) -> list[dict]:
         r for r in rows
         if r["status"].lower() == "open" and r["person"].strip().lower() == target
     ]
+def find_duplicate_open_row(person_name: str, task: str) -> dict | None:
+    """Return an existing OPEN row for this person whose task text is identical
+    (case-insensitive, whitespace-stripped), or None.
+    Exact match only -- no fuzzy matching. A near-miss silently merging two
+    genuinely different tasks is worse than one redundant row."""
+    if not task:
+        return None
+    target = task.strip().lower()
+    for row in get_open_rows_for_person(person_name):
+        if row["task"].strip().lower() == target:
+            return row
+    return None
 def close_followup_by_id(fu_id: str) -> bool:
     """Set status to 'done' for the row with this exact ID. Atomic write.
     Returns True if a row was changed, False otherwise."""

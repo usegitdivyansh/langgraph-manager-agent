@@ -11,7 +11,7 @@ from src.agent.writing_state import WritingState
 from src.tools.local_wiki import write_person_file, create_person_file, WIKI_ROOT
 from src.tools.llm_client import get_llm_client, safe_completion
 from src.tools.project_wiki import detect_mentioned_projects, add_person_to_project
-from src.tools.followup_update import get_open_rows_for_person, close_single_open_followup
+from src.tools.followup_update import get_open_rows_for_person, close_single_open_followup, find_duplicate_open_row
 FOLLOWUP_LIST_PATH = WIKI_ROOT / "follow-up-list.md"
 INDEX_PATH = WIKI_ROOT / "index.md"
 FOLLOWUP_CHECK_PROMPT = """Analyse this update for TWO independent things.
@@ -99,13 +99,17 @@ def _detect_and_log_followup(person_name: str, update_content: str, source_file:
         # zero open rows -> nothing to close, stay silent
     # --- COMMITMENT (unchanged behaviour: append a new open row) ---
     if parsed.get("has_commitment"):
-        fu_id = _next_followup_id()
-        task = parsed.get("task", "unspecified")
-        due = parsed.get("due_date", today)
-        row = f"| {fu_id} | {person_name} | {task} | {today} | {due} | {source_file} | open |\n"
-        with open(FOLLOWUP_LIST_PATH, "a", encoding="utf-8") as f:
-            f.write(row)
-        notes.append(f"Logged {fu_id} (due {due}).")
+        task = parsed.get("task") or "unspecified"
+        due = parsed.get("due_date") or today
+        existing = find_duplicate_open_row(person_name, task)
+        if existing:
+            notes.append(f"{existing['id']} already tracks this (due {existing['due']}).")
+        else:
+            fu_id = _next_followup_id()
+            row = f"| {fu_id} | {person_name} | {task} | {today} | {due} | {source_file} | open |\n"
+            with open(FOLLOWUP_LIST_PATH, "a", encoding="utf-8") as f:
+                f.write(row)
+            notes.append(f"Logged {fu_id} (due {due}).")
     return notes
 def _sync_index_people_table(person_name: str, rel_path: str):
     if not INDEX_PATH.exists():
