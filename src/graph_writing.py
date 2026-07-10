@@ -17,6 +17,16 @@ def node_classify(state: WritingState) -> dict:
     return result
 def node_resolve_person(state: WritingState) -> dict:
     person_name = state.get("person_name") or ""
+    # Fallback: the LLM found no name in the text (e.g. "I finished the task").
+    # Deterministically resolve the Slack sender ID to a wiki name. No LLM, no
+    # fuzzy matching -- exact ID match or nothing.
+    if not person_name.strip():
+        sender_id = state.get("sender") or ""
+        from src.tools.slack_users import lookup_person_name
+        resolved = lookup_person_name(sender_id)
+        if resolved:
+            print(f"[RESOLVE] no name in text; resolved sender {sender_id} -> {resolved}")
+            person_name = resolved
     if not person_name.strip():
         return {
             "person_name": None,

@@ -58,8 +58,13 @@ def detect_followups(today: date | None = None) -> dict:
         category = _categorize(row, today)
         result[category].append(row)
     return result
-def format_report(categorized: dict) -> str:
-    """Formats the categorized follow-ups into a readable Slack-friendly report."""
+def format_report(categorized: dict, mention_fn=None) -> str:
+    """Formats the categorized follow-ups into a readable Slack-friendly report.
+    mention_fn: optional callable(person_name) -> str. Used to turn a wiki name
+    into a Slack mention. Defaults to the plain name, so this function stays
+    pure and network-free unless a caller opts in."""
+    if mention_fn is None:
+        mention_fn = lambda name: name
     lines = []
     if categorized.get("error"):
         return f":warning: {categorized['error']}"
@@ -71,15 +76,15 @@ def format_report(categorized: dict) -> str:
     if overdue:
         lines.append("*Overdue:*")
         for r in overdue:
-            lines.append(f"  - [{r['id']}] {r['person']}: {r['task']} (was due {r['due']})")
+            lines.append(f"  - [{r['id']}] {mention_fn(r['person'])}: {r['task']} (was due {r['due']})")
     if due_today:
         lines.append("*Due today:*")
         for r in due_today:
-            lines.append(f"  - [{r['id']}] {r['person']}: {r['task']}")
+            lines.append(f"  - [{r['id']}] {mention_fn(r['person'])}: {r['task']}")
     if upcoming:
         lines.append("*Upcoming:*")
         for r in upcoming:
-            lines.append(f"  - [{r['id']}] {r['person']}: {r['task']} (due {r['due']})")
+            lines.append(f"  - [{r['id']}] {mention_fn(r['person'])}: {r['task']} (due {r['due']})")
     return "\n".join(lines)
 def _row_to_line(r: dict) -> str:
     """Rebuild a table row line from a parsed row dict (same 7-column format)."""

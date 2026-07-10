@@ -55,7 +55,8 @@ def run_followup_and_post():
     removed = purge_expired_followups()
     if removed:
         print(f"Purged {removed} expired follow-up(s).")
-    report = run_followup_check()
+    from src.tools.slack_users import mention
+    report = run_followup_check(mention_fn=mention)
     channel = os.environ.get("SLACK_HOME_CHANNEL")
     app.client.chat_postMessage(channel=channel, text=f":clipboard: *Follow-up Check*\n{report}")
     print("Posted follow-up report to Slack.")
